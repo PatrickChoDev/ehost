@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
     branches:
       - main
   pull_request:
     branches:
       - main
+  repository_dispatch:
+    types: [release-created]
 
 jobs:
   build:
@@ -33,6 +33,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: ${{ github.event.client_payload.ref || github.ref }}
 
       - uses: actions/setup-go@v4
         with:
@@ -66,7 +67,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'release-created'
 
     steps:
       - uses: actions/checkout@v3

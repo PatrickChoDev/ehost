@@ -44,5 +44,5 @@ jobs:
       env:
         GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
       with:
-        name: ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}
+        name: ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         path: build/*

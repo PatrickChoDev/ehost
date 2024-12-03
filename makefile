@@ -1,45 +1,44 @@
-# Detect the operating system
-UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
+# Build variables
+BINARY_NAME=ehost
+BUILD_DIR=build
 
-# Set installation directories based on the operating system
-ifeq ($(UNAME_S), Linux)
-	INSTALL_DIR := /usr/local/bin
-else ifeq ($(UNAME_S), Darwin)
-	ifeq ($(UNAME_M), arm64)
-		INSTALL_DIR := /opt/homebrew/bin
-	else
-		INSTALL_DIR := /usr/local/bin
-	endif
-endif
+# Git version information
+GIT_COMMIT=$(shell git rev-parse --short HEAD)
+GIT_DIRTY=$(shell test -n "`git status --porcelain`" && echo "-dirty" || echo "")
+VERSION=$(GIT_COMMIT)$(GIT_DIRTY)
 
-# Project name
-PROJECT_NAME := ehost
+# Go parameters
+GOCMD=go
+GOBUILD=$(GOCMD) build
+GOCLEAN=$(GOCMD) clean
 
-# Go compiler and flags
-GO := go
-VERSION := $(shell git describe --tags --always --dirty)
-GOFLAGS := -ldflags "-s -w -X main.Version=$(VERSION)"
-GOARCH := $(shell $(GO) env GOARCH)
+# Supported GOOS and GOARCH
+PLATFORMS=linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 
-# Default target
-all: build
+.PHONY: all clean build build-all
 
-# Build target
-build:
-	$(GO) build $(GOFLAGS) -o $(PROJECT_NAME) -arch $(GOARCH) main.go
+all: clean build
 
-# Install target
-install: build
-	install -m 0755 $(PROJECT_NAME) $(INSTALL_DIR)/$(PROJECT_NAME)
-
-# Clean target
 clean:
-	rm -f $(PROJECT_NAME)
+	$(GOCLEAN)
+	rm -rf $(BUILD_DIR)
 
-# Uninstall target
-uninstall:
-	rm -f $(INSTALL_DIR)/$(PROJECT_NAME)
+build:
+	$(GOBUILD) -o $(BINARY_NAME) -ldflags "-X main.Version=$(VERSION)" .
 
-# Phony targets
-.PHONY: all build install clean uninstall
+build-all:
+	mkdir -p $(BUILD_DIR)
+	$(foreach platform,$(PLATFORMS),\
+		$(eval OS := $(word 1,$(subst /, ,$(platform))))\
+		$(eval ARCH := $(word 2,$(subst /, ,$(platform))))\
+		GOOS=$(OS) GOARCH=$(ARCH) $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)_$(OS)_$(ARCH)$(if $(findstring windows,$(OS)),.exe,) -ldflags "-X main.Version=$(VERSION)" . ;)
+
+# Individual platform builds
+linux-amd64:
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)_linux_amd64 -ldflags "-X main.Version=$(VERSION)" .
+
+darwin-amd64:
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)_darwin_amd64 -ldflags "-X main.Version=$(VERSION)" .
+
+windows-amd64:
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)_windows_amd64.exe -ldflags "-X main.Version=$(VERSION)" .

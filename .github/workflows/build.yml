@@ -29,9 +29,11 @@ jobs:
 
     - name: Get short SHA
       id: sha
+      shell: bash
       run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
     
     - name: Build
+      shell: bash
       env:
         GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
         GOARCH: ${{ matrix.arch }}

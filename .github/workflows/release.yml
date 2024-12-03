@@ -40,9 +40,11 @@ jobs:
 
     - name: Get version
       id: version
+      shell: bash
       run: echo "version=$(echo ${{ needs.release-please.outputs.tag_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
 
     - name: Build
+      shell: bash
       env:
         GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
         GOARCH: ${{ matrix.arch }}

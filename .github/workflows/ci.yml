@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - '*'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.23.3
+
+    - name: Get version
+      id: get_version
+      run: echo "::set-output name=VERSION::$(git describe --tags --always --dirty)"
+
+    - name: Build
+      run: make build
+      env:
+        VERSION: ${{ steps.get_version.outputs.VERSION }}
+
+    - name: Upload binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: ehost-${{ steps.get_version.outputs.VERSION }}
+        path: ehost-${{ steps.get_version.outputs.VERSION }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.23.3
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        echo "## Changelog" > CHANGELOG.md
+        git log --pretty=format:"* %s (%h)" $(git describe --tags --abbrev=0 @^)..@ >> CHANGELOG.md
+        echo "::set-output name=CHANGELOG::$(cat CHANGELOG.md)"
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        release_name: Release ${{ steps.get_version.outputs.VERSION }}
+        body: ${{ steps.changelog.outputs.CHANGELOG }}
+        draft: false
+        prerelease: false
+
+    - name: Upload binary to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ehost-${{ steps.get_version.outputs.VERSION }}
+        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}
+        asset_content_type: application/octet-stream

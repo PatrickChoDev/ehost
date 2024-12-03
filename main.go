@@ -10,10 +10,13 @@ import (
 
 const hostsFilePath = "/etc/hosts"
 
+var Version = "development"
+
 func main() {
 	app := &cli.App{
-		Name:  "ehost",
-		Usage: "Manage your /etc/hosts at ease",
+		Name:    "ehost",
+		Usage:   "Manage your /etc/hosts at ease",
+		Version: Version,
 		Commands: []*cli.Command{
 			{
 				Name:  "add",

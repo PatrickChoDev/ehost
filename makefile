@@ -18,7 +18,8 @@ PROJECT_NAME := ehost
 
 # Go compiler and flags
 GO := go
-GOFLAGS := -ldflags "-s -w"
+VERSION := $(shell git describe --tags --always --dirty)
+GOFLAGS := -ldflags "-s -w -X main.Version=$(VERSION)"
 GOARCH := $(shell $(GO) env GOARCH)
 
 # Default target

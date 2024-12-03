@@ -19,13 +19,14 @@ PROJECT_NAME := ehost
 # Go compiler and flags
 GO := go
 GOFLAGS := -ldflags "-s -w"
+GOARCH := $(shell $(GO) env GOARCH)
 
 # Default target
 all: build
 
 # Build target
 build:
-	$(GO) build $(GOFLAGS) -o $(PROJECT_NAME) main.go
+	$(GO) build $(GOFLAGS) -o $(PROJECT_NAME) -arch $(GOARCH) main.go
 
 # Install target
 install: build

@@ -1,0 +1,45 @@
+
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        arch: [amd64, arm64]
+        exclude:
+          - os: windows-latest
+            arch: arm64
+    env:
+      goos: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get short SHA
+      id: sha
+      run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Build
+      run: |
+        mkdir -p build
+        GOOS=${{ env.goos }} GOARCH=${{ matrix.arch }} go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}${{ env.goos == 'windows' && '.exe' || '' }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}
+        path: build/*

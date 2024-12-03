@@ -20,19 +20,16 @@ PROJECT_NAME := ehost
 GO := go
 GOFLAGS := -ldflags "-s -w"
 
-# Versioning
-VERSION := $(shell git describe --tags --always --dirty)
-
 # Default target
 all: build
 
 # Build target
 build:
-	$(GO) build $(GOFLAGS) -o $(PROJECT_NAME)-$(VERSION) main.go
+	$(GO) build $(GOFLAGS) -o $(PROJECT_NAME) main.go
 
 # Install target
 install: build
-	install -m 0755 $(PROJECT_NAME)-$(VERSION) $(INSTALL_DIR)/$(PROJECT_NAME)
+	install -m 0755 $(PROJECT_NAME) $(INSTALL_DIR)/$(PROJECT_NAME)
 
 # Clean target
 clean:

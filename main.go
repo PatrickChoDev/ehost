@@ -13,7 +13,7 @@ const hostsFilePath = "/etc/hosts"
 func main() {
 	app := &cli.App{
 		Name:  "ehost",
-		Usage: "Easy manage your /etc/hosts file",
+		Usage: "Manage your /etc/hosts at ease",
 		Commands: []*cli.Command{
 			{
 				Name:  "add",

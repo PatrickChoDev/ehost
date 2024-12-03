@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     tags:
-      - '*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
     branches:
       - main
   pull_request:
@@ -15,125 +15,75 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: ehost-linux-amd64
+            goarch: amd64
+          - os: macos-latest
+            artifact_name: ehost-darwin-amd64
+            goarch: amd64
+          - os: macos-latest
+            artifact_name: ehost-darwin-arm64
+            goarch: arm64
+          - os: windows-latest
+            artifact_name: ehost-windows-amd64.exe
+            goarch: amd64
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: 1.23.3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.3'
 
-    - name: Get version
-      id: get_version
-      run: echo "::set-output name=VERSION::$(git describe --tags --always --dirty)"
+      - name: Set Version
+        id: version
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=$(git describe --tags --always --dirty)" >> $GITHUB_OUTPUT
+          fi
 
-    - name: Build
-      run: make build
-      env:
-        VERSION: ${{ steps.get_version.outputs.VERSION }}
+      - name: Build
+        run: |
+          make build
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          GOOS: ${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'macos-latest' && 'darwin' || 'linux' }}
+          GOARCH: ${{ matrix.goarch }}
 
-    - name: Upload binary
-      uses: actions/upload-artifact@v3
-      with:
-        name: ehost-${{ steps.get_version.outputs.VERSION }}-${{ matrix.os }}
-        path: ehost-${{ steps.get_version.outputs.VERSION }}
-
-  gather-artifacts:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: ehost-${{ steps.get_version.outputs.VERSION }}-ubuntu-latest
-        path: ./artifacts
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: ehost-${{ steps.get_version.outputs.VERSION }}-macos-latest
-        path: ./artifacts
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: ehost-${{ steps.get_version.outputs.VERSION }}-windows-latest
-        path: ./artifacts
-
-  tag-release:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Get version
-      id: get_version
-      run: echo "::set-output name=VERSION::$(git describe --tags --always --dirty)"
-
-    - name: Create tag
-      run: |
-        git tag ${{ steps.get_version.outputs.VERSION }}
-        git push origin ${{ steps.get_version.outputs.VERSION }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ehost-${{ steps.version.outputs.VERSION }}
+          if-no-files-found: error
 
   release:
-    needs: gather-artifacts
+    needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: 1.23.3
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist
 
-    - name: Generate changelog
-      id: changelog
-      run: |
-        echo "## Changelog" > CHANGELOG.md
-        git log --pretty=format:"* %s (%h)" $(git describe --tags --abbrev=0 @^)..@ >> CHANGELOG.md
-        echo "::set-output name=CHANGELOG::$(cat CHANGELOG.md)"
-
-    - name: Create Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: Release ${{ steps.get_version.outputs.VERSION }}
-        body: ${{ steps.changelog.outputs.CHANGELOG }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Ubuntu binary to release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/ehost-${{ steps.get_version.outputs.VERSION }}-ubuntu-latest
-        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}-ubuntu-latest
-        asset_content_type: application/octet-stream
-    - name: Upload MacOS binary to release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/ehost-${{ steps.get_version.outputs.VERSION }}-macos-latest
-        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}-macos-latest
-        asset_content_type: application/octet-stream
-    - name: Upload Windows binary to release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/ehost-${{ steps.get_version.outputs.VERSION }}-windows-latest
-        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}-windows-latest
-        asset_content_type: application/octet-stream
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

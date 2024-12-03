@@ -37,11 +37,7 @@ jobs:
         GOARCH: ${{ matrix.arch }}
       run: |
         mkdir -p build
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          go build -o build\\ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}.exe
-        else
-          go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}
-        fi
+        go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3

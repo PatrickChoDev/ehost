@@ -32,11 +32,15 @@ jobs:
     - name: Get short SHA
       id: sha
       run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
+    
     - name: Build
       run: |
         mkdir -p build
-        GOOS=${{ env.goos }} GOARCH=${{ matrix.arch }} go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}${{ env.goos == 'windows' && '.exe' || '' }}
+        if [ "${{ matrix.os }}" == "windows-latest" ]; then
+          go build -o build\\ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}.exe
+        else
+          GOOS=${{ env.goos }} GOARCH=${{ matrix.arch }} go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}
+        fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3

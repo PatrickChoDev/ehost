@@ -12,7 +12,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - name: Checkout code
@@ -35,11 +38,48 @@ jobs:
     - name: Upload binary
       uses: actions/upload-artifact@v3
       with:
-        name: ehost-${{ steps.get_version.outputs.VERSION }}
+        name: ehost-${{ steps.get_version.outputs.VERSION }}-${{ matrix.os }}
         path: ehost-${{ steps.get_version.outputs.VERSION }}
 
-  release:
+  gather-artifacts:
     needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: ehost-${{ steps.get_version.outputs.VERSION }}-ubuntu-latest
+        path: ./artifacts
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: ehost-${{ steps.get_version.outputs.VERSION }}-macos-latest
+        path: ./artifacts
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: ehost-${{ steps.get_version.outputs.VERSION }}-windows-latest
+        path: ./artifacts
+
+  tag-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Get version
+      id: get_version
+      run: echo "::set-output name=VERSION::$(git describe --tags --always --dirty)"
+
+    - name: Create tag
+      run: |
+        git tag ${{ steps.get_version.outputs.VERSION }}
+        git push origin ${{ steps.get_version.outputs.VERSION }}
+
+  release:
+    needs: gather-artifacts
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -70,12 +110,30 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload binary to release
+    - name: Upload Ubuntu binary to release
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ehost-${{ steps.get_version.outputs.VERSION }}
-        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}
+        asset_path: ./artifacts/ehost-${{ steps.get_version.outputs.VERSION }}-ubuntu-latest
+        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}-ubuntu-latest
+        asset_content_type: application/octet-stream
+    - name: Upload MacOS binary to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/ehost-${{ steps.get_version.outputs.VERSION }}-macos-latest
+        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}-macos-latest
+        asset_content_type: application/octet-stream
+    - name: Upload Windows binary to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/ehost-${{ steps.get_version.outputs.VERSION }}-windows-latest
+        asset_name: ehost-${{ steps.get_version.outputs.VERSION }}-windows-latest
         asset_content_type: application/octet-stream

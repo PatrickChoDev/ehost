@@ -29,8 +29,6 @@ jobs:
         exclude:
           - os: windows-latest
             arch: arm64
-    env:
-      goos: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
 
     steps:
     - uses: actions/checkout@v3
@@ -45,12 +43,15 @@ jobs:
       run: echo "version=$(echo ${{ needs.release-please.outputs.tag_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
 
     - name: Build
+      env:
+        GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
+        GOARCH: ${{ matrix.arch }}
       run: |
         mkdir -p build
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          go build -o build\\ehost-${{ steps.version.outputs.version }}-${{ env.goos }}-${{ matrix.arch }}.exe
+          go build -o build\\ehost-${{ steps.version.outputs.version }}-${{ env.GOOS }}-${{ matrix.arch }}.exe
         else
-          GOOS=${{ env.goos }} GOARCH=${{ matrix.arch }} go build -o build/ehost-${{ steps.version.outputs.version }}-${{ env.goos }}-${{ matrix.arch }}
+          go build -o build/ehost-${{ steps.version.outputs.version }}-${{ env.GOOS }}-${{ matrix.arch }}
         fi
 
 

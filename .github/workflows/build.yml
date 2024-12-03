@@ -18,8 +18,6 @@ jobs:
         exclude:
           - os: windows-latest
             arch: arm64
-    env:
-      goos: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
 
     steps:
     - uses: actions/checkout@v3
@@ -34,16 +32,21 @@ jobs:
       run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
     
     - name: Build
+      env:
+        GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
+        GOARCH: ${{ matrix.arch }}
       run: |
         mkdir -p build
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          go build -o build\\ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}.exe
+          go build -o build\\ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}.exe
         else
-          GOOS=${{ env.goos }} GOARCH=${{ matrix.arch }} go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}
+          go build -o build/ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}
         fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
+      env:
+        GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'darwin' }}
       with:
-        name: ehost-${{ steps.sha.outputs.sha }}-${{ env.goos }}-${{ matrix.arch }}
+        name: ehost-${{ steps.sha.outputs.sha }}-${{ env.GOOS }}-${{ matrix.arch }}
         path: build/*

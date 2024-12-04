@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/PatrickChoDev/ehost/compare/v0.0.1...v0.0.2) (2024-12-04)
+
+
+### Bug Fixes
+
+* **ci:** remove windows ([93d19b9](https://github.com/PatrickChoDev/ehost/commit/93d19b9b4d664ff776727696b1da1d3acd1a9e94))
+
 ## 0.0.1 (2024-12-03)
 
 
